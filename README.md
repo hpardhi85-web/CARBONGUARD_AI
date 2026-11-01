@@ -34,7 +34,39 @@ Many Indian exporters do not have organized emissions data. Their information is
 
 ---
 
-## 3. Six Multi-Agent System Architecture
+## 3. Repository Architecture
+
+```
+CARBONGUARD_AI/
+├── frontend/             # Next.js 16 (Turbopack) Web Console & Dashboards
+│   ├── app/              # Next.js App Router (Dashboard, Portals, API Routes)
+│   ├── components/       # UI Components & Navigation
+│   ├── lib/              # Types, Supabase client & Data stores
+│   ├── public/           # Static assets & reports
+│   ├── requirements.txt  # Frontend package dependencies & install guide
+│   └── package.json      # NPM dependencies & scripts
+├── backend/              # Python FastAPI & Multi-Agent Engine
+│   ├── agents/           # 6 Autonomous Agents (LangGraph StateGraph)
+│   │   ├── collector.py        # Ingestion & Time-Series Extraction
+│   │   ├── checker.py          # EU CBAM Annex IV Gap Auditor
+│   │   ├── outreach.py         # Supplier Outreach & Tokenized Links
+│   │   ├── calculator.py       # Deterministic CEA v19 Carbon Accounting
+│   │   ├── verifier.py         # Anti-Tampering & Planted Error Trap
+│   │   └── report_generator.py # Dynamic Gemini AI + Supabase PDF Engine
+│   ├── data/             # IPCC 2006 & CEA v19 emission factors
+│   ├── main.py           # FastAPI REST API endpoints
+│   └── requirements.txt  # Python pip dependencies
+├── reports/              # Audit-ready EU CBAM Declaration PDF samples
+├── sample_documents/     # Reference export invoices, MTCs & power bills
+├── uploads/              # Steel_industry_data.csv (35,040 rows)
+├── supabase/             # PostgreSQL database schemas & tables
+├── run_dev.bat           # 1-Click launcher (starts Port 3000 & Port 8000)
+└── package.json          # Root scripts for npm run dev / npm run build
+```
+
+---
+
+## 4. Six Multi-Agent System Architecture
 
 ```mermaid
 flowchart TD

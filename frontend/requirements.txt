@@ -1,0 +1,30 @@
+# CarbonGuard AI - Frontend Dependencies & Requirements
+# =======================================================
+# Engine: Next.js 16 (Turbopack) + React 19 + TypeScript
+# Install: npm install
+# Run Dev: npm run dev (http://localhost:3000)
+# Build:   npm run build
+
+# Core Framework
+next>=16.4.3
+react>=19.2.3
+react-dom>=19.2.3
+
+# UI & Styling
+tailwindcss>=4.0.0
+@tailwindcss/postcss>=4.0.0
+lucide-react>=1.16.0
+recharts>=2.15.1
+
+# Cloud & Integrations
+@supabase/supabase-js>=2.49.1
+uuid>=11.1.0
+
+# TypeScript & Development Tools
+typescript>=5.0.0
+@types/node>=20.0.0
+@types/react>=19.0.0
+@types/react-dom>=19.0.0
+@types/uuid>=10.0.0
+eslint>=9.0.0
+eslint-config-next>=16.4.3

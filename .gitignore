@@ -1,10 +1,11 @@
 # Node / Next.js
 node_modules/
-carbongaurd/node_modules/
+frontend/node_modules/
+carbongaurd/
 .next/
-carbongaurd/.next/
+frontend/.next/
 out/
-carbongaurd/out/
+frontend/out/
 build/
 *.tsbuildinfo
 next-env.d.ts
@@ -25,11 +26,11 @@ __pycache__/
 .env.local
 .env.*.local
 backend/.env
-carbongaurd/.env.local
+frontend/.env.local
 !.env.example
 !*.example
 !backend/.env.example
-!carbongaurd/.env.local.example
+!frontend/.env.local.example
 
 # Logs and scratch files
 *.log

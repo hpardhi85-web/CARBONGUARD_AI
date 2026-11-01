@@ -12,6 +12,10 @@ echo [2/3] Waiting 2 seconds for backend initialization...
 timeout /t 2 /nobreak >nul
 
 echo [3/3] Starting Next.js Web Frontend on http://localhost:3000 ...
-cd carbongaurd
+if exist "frontend" (
+    cd frontend
+) else (
+    cd carbongaurd
+)
 start http://localhost:3000
 npm run dev
