@@ -39,6 +39,7 @@ yarn-debug.log*
 yarn-error.log*
 scratch_uvicorn.log
 project-structure.txt
+reports/
 
 # OS files
 .DS_Store

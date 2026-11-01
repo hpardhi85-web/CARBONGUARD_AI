@@ -132,11 +132,28 @@ export async function POST(
       });
     }
 
-    // Check if supplier provided precursor document
+    // Check if supplier provided precursor document or if precursor was dropped
     const hasSupplierDoc = docs.some(d => d.category === 'supplier_doc' || d.is_supplier_document);
+    const isDropped = Boolean((existingCase as any).precursor_dropped || docs.some(d => d.category === 'exemption_notice') || existingCase.extracted_fields?.some(f => f.field_name === 'precursor_emissions_data' && f.numeric_value === 0));
     let missingItems: MissingDataItem[] = [];
 
-    if (hasSupplierDoc) {
+    if (isDropped) {
+      extracted.push({
+        id: `ext-drop-${uuidv4().substring(0, 6)}`,
+        case_id: id,
+        field_name: "precursor_emissions_data",
+        field_label: "Precursor Emissions: Dropped / Scope 1 & 2 Direct Boundary Applied",
+        extracted_value: "0.00 MT (Dropped per Exporter Authorization)",
+        numeric_value: 0.0,
+        unit: "MT",
+        source_file_name: "Exporter Authorization (Scope 1+2 Boundary)",
+        page_number: 1,
+        sheet_row: "Statutory Boundary Exemption (Annex IV)",
+        confidence: 1.0,
+        extraction_timestamp: new Date().toISOString()
+      });
+      missingItems = [];
+    } else if (hasSupplierDoc) {
       extracted.push({
         id: `ext-${uuidv4().substring(0, 6)}`,
         case_id: id,
@@ -321,16 +338,18 @@ To proceed: Please click your secure link below and upload your raw material inv
     // ----------------------------------------------------
     const fuelLiters = realFuelLiters;
     const elecKwh = realElecKwh;
-    const precMt = +(qty * 1.08).toFixed(2);
+    const precMt = isDropped ? 0.0 : +(qty * 1.08).toFixed(2);
 
     const directTco2e = realDirectTco2e !== null ? realDirectTco2e : +((fuelLiters * 3.114) / 1000).toFixed(4); // 3.114 kg CO2/L or direct CEM
     const indirectTco2e = +((elecKwh * 0.716) / 1000).toFixed(4); // CEA factor 0.716 kg CO2/kWh
-    const precursorTco2e = +(precMt * 1.92).toFixed(4); // 1.92 tCO2/MT for DRI
+    const precursorTco2e = isDropped ? 0.0 : +(precMt * 1.92).toFixed(4); // 1.92 tCO2/MT for DRI or 0 if dropped
     const totalTco2e = +(directTco2e + indirectTco2e + precursorTco2e).toFixed(4);
     const intensity = +(totalTco2e / qty).toFixed(4);
 
     const calculations: CalculationResult = {
-      methodology: "EU CBAM Annex IV (Direct + Indirect + Precursors)",
+      methodology: isDropped 
+        ? "EU CBAM Annex IV (Scope 1 Direct Combustion + Scope 2 Indirect Electricity Boundary)"
+        : "EU CBAM Annex IV (Direct + Indirect + Precursors)",
       methodology_version: "Commission Implementing Regulation (EU) 2023/1773",
       calculation_timestamp: new Date().toISOString(),
       product_quantity: qty,

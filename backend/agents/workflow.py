@@ -61,6 +61,9 @@ def checker_node(state: ComplianceCaseState) -> Dict[str, Any]:
         supplier_info
     )
 
+    if state.precursor_dropped or (state.supplier_response and state.supplier_response.get("scenario") in ["unavailable", "drop_missing"]):
+        missing_items = [m for m in missing_items if m.get("field_name") != "precursor_emissions_data"]
+
     log_entry = {
         "agent": "Missing Data Checker",
         "action": "VALIDATION_COMPLETED",

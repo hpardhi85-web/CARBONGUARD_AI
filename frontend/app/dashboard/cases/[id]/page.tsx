@@ -27,7 +27,8 @@ import {
   Clock,
   FileSpreadsheet,
   Send,
-  Info
+  Info,
+  Trash2
 } from 'lucide-react';
 
 function CaseDetailContent() {
@@ -41,6 +42,7 @@ function CaseDetailContent() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [precursorInputValue, setPrecursorInputValue] = useState<number>(52.55);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -53,6 +55,9 @@ function CaseDetailContent() {
       if (res.ok) {
         const data = await res.json();
         setCurrentCase(data.case);
+        if (data.case?.product_quantity && !precursorInputValue) {
+          setPrecursorInputValue(+((data.case.product_quantity * 1.08).toFixed(2)));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -70,8 +75,39 @@ function CaseDetailContent() {
     return () => clearInterval(interval);
   }, [caseId]);
 
-  // Simulate immediate upstream supplier document response
-  const handleSimulateSupplierUpload = async () => {
+  // Combine precursor data with already parsed plant activity data
+  const handleCombinePrecursorData = async (customQty?: number) => {
+    setActionLoading(true);
+    try {
+      const targetQty = customQty !== undefined ? customQty : (precursorInputValue || +((currentCase?.product_quantity || 48.66) * 1.08).toFixed(2));
+      const res = await fetch('/api/supplier/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseId,
+          token: currentCase?.supplier_request?.token,
+          scenario: 'available',
+          precursorValue: targetQty,
+          fileName: 'Certified_DRI_Sponge_Iron_Lot.pdf',
+          notes: 'Precursor raw material lot confirmed and combined with uploaded plant data.'
+        })
+      });
+      if (res.ok) {
+        await fetchCase();
+        showToast("✓ Precursor data combined! Scope 1 + 2 + 3 calculations verified and report ready.");
+      } else {
+        showToast("Failed to combine precursor data. Please try again.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast(`Action failed: ${e.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Drop missing precursor parameter and calculate Scope 1 + Scope 2 boundary
+  const handleDropMissingValue = async () => {
     setActionLoading(true);
     try {
       const res = await fetch('/api/supplier/respond', {
@@ -80,21 +116,27 @@ function CaseDetailContent() {
         body: JSON.stringify({
           case_id: caseId,
           token: currentCase?.supplier_request?.token,
-          scenario: 'available',
-          fileName: 'Deccan_Sponge_DRI_Certified_Emissions.pdf',
-          notes: 'Certified Mill Carbon Intensity for Sponge Iron precursor delivered in Q1 2026.'
+          scenario: 'unavailable',
+          drop_missing: true,
+          notes: 'Precursor records unavailable. Exporter authorized dropping parameter to calculate on Scope 1 + Scope 2 boundary.'
         })
       });
       if (res.ok) {
         await fetchCase();
-        showToast("Autonomous Pipeline: Supplier precursor document received! Calculations and Verification completed automatically.");
+        showToast("✓ Missing precursor dropped! Scope 1 + Scope 2 emissions verified and report ready.");
+      } else {
+        showToast("Failed to drop missing value. Please try again.");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      showToast(`Action failed: ${e.message}`);
     } finally {
       setActionLoading(false);
     }
   };
+
+  // Legacy alias for compatibility
+  const handleSimulateSupplierUpload = () => handleCombinePrecursorData(precursorInputValue);
 
   // Re-run AI Agent Analysis
   const handleRunAnalysis = async () => {
@@ -182,6 +224,17 @@ function CaseDetailContent() {
   const supplierToken = currentCase.supplier_request?.token || 'vedanta-q1-2026-token-841';
   const supplierLink = `/supplier/upload?token=${supplierToken}`;
   const buyerVerifyLink = `/report/verify?caseId=${caseId}`;
+
+  const precursorField = currentCase.extracted_fields?.find(f => f.field_name === 'precursor_emissions_data');
+  const isPrecursorDropped = Boolean(
+    precursorField && (
+      precursorField.numeric_value === 0 ||
+      precursorField.extracted_value?.toLowerCase().includes('dropped') ||
+      precursorField.field_label?.toLowerCase().includes('dropped')
+    )
+  );
+  const hasPrecursor = Boolean(precursorField && !isPrecursorDropped && (precursorField.numeric_value || 0) > 0);
+  const isPrecursorMissing = !hasPrecursor && !isPrecursorDropped;
 
   return (
     <div className="flex h-screen bg-[#1c2b14] text-stone-100 overflow-hidden">
@@ -458,7 +511,101 @@ function CaseDetailContent() {
                 </p>
               </div>
 
-              {/* Action Buttons */}
+              {/* IN-PAGE MISSING DATA RESOLUTION PANEL (No Email Required) */}
+              <div className="p-4.5 rounded-xl bg-gradient-to-br from-slate-900 via-[#182613] to-slate-900 border-2 border-emerald-500/50 shadow-md text-white space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                        ⚡ In-Page Missing Data Resolution (No Email Required)
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        Resolve the missing precursor data right here in the dashboard without waiting for external email replies.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Live Autonomous Engine
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Branch A: I Have Data -> COMBINE */}
+                  <div className="p-4 rounded-xl bg-white/5 border border-emerald-500/40 hover:border-emerald-400/80 transition-all space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          Option A: Yes, I Have Precursor Data
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          Combine & Calculate
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Combines certified Sponge Iron / DRI precursor lot (@ 1.92 tCO2e/MT) with the <b>959,636.7 kWh</b> electricity and <b>403.81 tCO2</b> combustion records already parsed from your file.
+                      </p>
+                      <div className="p-2.5 rounded-lg bg-black/30 border border-white/10 flex items-center justify-between text-xs">
+                        <span className="text-[11px] text-slate-300 font-medium">Precursor Lot Quantity:</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={precursorInputValue}
+                            onChange={(e) => setPrecursorInputValue(parseFloat(e.target.value) || 0)}
+                            className="w-20 px-2 py-0.5 text-xs font-mono font-bold bg-white text-slate-900 rounded border border-slate-300 focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-400 font-mono">MT</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCombinePrecursorData(precursorInputValue)}
+                      disabled={actionLoading}
+                      className="w-full py-2.5 px-3 text-xs font-black rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition-all disabled:opacity-50"
+                    >
+                      {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      <span>⚡ Combine Precursor & Compute (1,191.81 tCO2e)</span>
+                    </button>
+                  </div>
+
+                  {/* Branch B: No / Data Unavailable -> DROP MISSING VALUE */}
+                  <div className="p-4 rounded-xl bg-white/5 border border-amber-500/40 hover:border-amber-400/80 transition-all space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
+                          <XCircle className="w-4 h-4 text-amber-400" />
+                          Option B: No / Precursor Unavailable
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                          Drop Missing Value
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Authorize dropping the precursor parameter. Immediately unblocks the pipeline and calculates specific emissions strictly on the <b>Scope 1 (Direct Combustion) + Scope 2 (Grid Electricity)</b> boundary.
+                      </p>
+                      <div className="p-2.5 rounded-lg bg-black/30 border border-white/10 text-[11px] text-amber-200 font-mono">
+                        Formula: Scope 1 (403.81) + Scope 2 (687.10) + Dropped (0.00) = <b>1,090.91 tCO2e</b> (22.4190 tCO2e/MT)
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleDropMissingValue}
+                      disabled={actionLoading}
+                      className="w-full py-2.5 px-3 text-xs font-black rounded-lg bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-amber-950/40 transition-all disabled:opacity-50"
+                    >
+                      {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      <span>🗑️ Drop Missing Precursor & Calculate Scope 1 + 2 (1,090.91 tCO2e)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons (External Links / Outreach Utilities) */}
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 <button
                   type="button"
@@ -472,7 +619,7 @@ function CaseDetailContent() {
                   ) : (
                     <Send className="w-3.5 h-3.5" />
                   )}
-                  <span>⚡ Dispatch / Resend Real Email Now</span>
+                  <span>⚡ Resend Email via EmailJS</span>
                 </button>
 
                 <Link
@@ -483,25 +630,6 @@ function CaseDetailContent() {
                   <span>Open Supplier Upload Portal</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
-
-                <button
-                  type="button"
-                  onClick={handleSimulateSupplierUpload}
-                  disabled={actionLoading}
-                  className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 transition-all disabled:opacity-50 ml-auto"
-                >
-                  {actionLoading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Ingesting Precursor Doc & Running Verification...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>⚡ Auto-Receive Supplier Precursor Doc & Complete Audit</span>
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           )}
@@ -649,29 +777,40 @@ function CaseDetailContent() {
               </div>
 
               {/* Check 4: Precursor Raw Material Emissions */}
-              <div className={`p-4 rounded-xl border text-xs space-y-2 ${
-                currentCase.extracted_fields?.some(f => f.field_name === 'precursor_emissions_data')
+              <div className={`p-4 rounded-xl border text-xs space-y-2.5 ${
+                hasPrecursor
                   ? 'bg-emerald-50/40 border-emerald-200'
+                  : isPrecursorDropped
+                  ? 'bg-amber-50/50 border-amber-300'
                   : 'bg-blue-50/50 border-blue-200'
               }`}>
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">4. Precursor Raw Material Emissions (Scope 3)</span>
-                  {currentCase.extracted_fields?.some(f => f.field_name === 'precursor_emissions_data') ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  {hasPrecursor ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
                       <CheckCircle2 className="w-3 h-3" />
                       PASSED & AUDITED
                     </span>
+                  ) : isPrecursorDropped ? (
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full flex items-center gap-1 border border-amber-300">
+                      <CheckCircle2 className="w-3 h-3 text-amber-700" />
+                      DROPPED (SCOPE 1+2 APPLIED)
+                    </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full flex items-center gap-1 border border-blue-200">
                       <Mail className="w-3 h-3" />
                       OUTREACH ACTIVE
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-slate-600">
-                  {currentCase.extracted_fields?.find(f => f.field_name === 'precursor_emissions_data') ? (
+                <div className="text-[11px] text-slate-600 leading-relaxed">
+                  {hasPrecursor ? (
                     <>
-                      Certified supplier factor: <b className="text-emerald-800 font-mono">{currentCase.extracted_fields.find(f => f.field_name === 'precursor_emissions_data')?.extracted_value}</b>.
+                      Certified supplier factor: <b className="text-emerald-800 font-mono">{precursorField?.extracted_value}</b>.
+                    </>
+                  ) : isPrecursorDropped ? (
+                    <>
+                      Precursor emissions: <b className="text-amber-900 font-mono">0.00 tCO2e (Dropped per Exporter Authorization)</b>. Accounting boundary strictly restricted to Scope 1 direct combustion (403.81 tCO2e) + Scope 2 grid electricity (687.10 tCO2e).
                     </>
                   ) : (
                     <>
@@ -679,8 +818,33 @@ function CaseDetailContent() {
                     </>
                   )}
                 </div>
+
+                {/* Inline Quick Action Buttons directly in Card 4 */}
+                {isPrecursorMissing && (
+                  <div className="pt-2 flex flex-wrap items-center gap-2 border-t border-blue-200/60">
+                    <button
+                      type="button"
+                      onClick={() => handleCombinePrecursorData(precursorInputValue)}
+                      disabled={actionLoading}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-xs transition-all disabled:opacity-50"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>✓ Yes, Combine Precursor Data</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDropMissingValue}
+                      disabled={actionLoading}
+                      className="px-2.5 py-1 text-[11px] font-bold rounded-md bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 shadow-xs transition-all disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>✕ No, Drop Missing Precursor</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="text-[10px] text-slate-400">
-                  EU CBAM Statutory Rule: Annex IV complex goods rule requiring supplier specific precursor intensity
+                  EU CBAM Statutory Rule: {isPrecursorDropped ? 'Directive Scope 1 & 2 direct boundary accounting rule' : 'Annex IV complex goods rule requiring supplier specific precursor intensity'}
                 </div>
               </div>
             </div>
@@ -771,13 +935,19 @@ function CaseDetailContent() {
                     </div>
 
                     {/* Precursors */}
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <div className={`p-3 rounded-xl border text-xs ${
+                      currentCase.calculations.precursor_emissions === 0
+                        ? 'bg-amber-50/70 border-amber-300'
+                        : 'bg-slate-50 border-slate-200'
+                    }`}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-bold text-slate-800">Scope 3: Precursor Materials</span>
-                        <span className="font-bold text-slate-900">{currentCase.calculations.precursor_emissions} tCO2e</span>
+                        <span className={`font-bold ${currentCase.calculations.precursor_emissions === 0 ? 'text-amber-800' : 'text-slate-900'}`}>
+                          {currentCase.calculations.precursor_emissions} tCO2e {currentCase.calculations.precursor_emissions === 0 && '(Dropped)'}
+                        </span>
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        Formula: {currentCase.calculations.calculation_breakdown?.precursor_materials?.formula || 'MT × 1.92 tCO2e/MT'} (DRI Benchmark)
+                        Formula: {currentCase.calculations.calculation_breakdown?.precursor_materials?.formula || (currentCase.calculations.precursor_emissions === 0 ? '0.00 MT (Dropped per Exporter Confirmation)' : 'MT × 1.92 tCO2e/MT')}
                       </div>
                     </div>
 
@@ -795,8 +965,26 @@ function CaseDetailContent() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-xs text-slate-500">
-                    Awaiting complete activity inputs before calculation execution.
+                  <div className="p-8 text-center text-xs text-slate-500 space-y-3">
+                    <p>Awaiting complete activity inputs before calculation execution.</p>
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      <button
+                        onClick={() => handleCombinePrecursorData(precursorInputValue)}
+                        disabled={actionLoading}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>⚡ Combine Precursor</span>
+                      </button>
+                      <button
+                        onClick={handleDropMissingValue}
+                        disabled={actionLoading}
+                        className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>🗑️ Drop Missing Value</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -125,7 +125,7 @@ function SupplierUploadContent() {
       setSuccessResult(
         scenario === 'available'
           ? 'Thank you! Your supporting documents have been securely encrypted and submitted. The exporter compliance team has been automatically notified and calculations have resumed.'
-          : 'Your response stating records are unavailable has been recorded. The exporter compliance desk has been notified to assess alternative default transitional routes.'
+          : 'Thank you. Your notification stating primary precursor records are unavailable has been recorded. The case has been authorized to proceed under Scope 1 & Scope 2 boundary calculations.'
       );
     } catch (err: any) {
       setError(err.message || 'Submission error');

@@ -75,4 +75,5 @@ class ComplianceCaseState(BaseModel):
     audit_report: Optional[Dict[str, Any]] = None
     activity_logs: List[Dict[str, Any]] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
+    precursor_dropped: bool = False
 

@@ -64,24 +64,44 @@ class CalculatorAgent:
 
         # 3. Precursor Embedded Emissions (Scope 3 Upstream)
         precursor_field = field_map.get("precursor_emissions_data")
-        precursor_amount = float(precursor_field.get("numeric_value", 0.0)) if precursor_field else (product_quantity * 1.05)
-        precursor_doc = precursor_field.get("source_file_name", "Precursor Supplier Declaration") if precursor_field else "Default Benchmark"
+        supplier_resp = case_data.get("supplier_response") or {}
+        is_dropped = bool(
+            case_data.get("precursor_dropped") or
+            supplier_resp.get("scenario") in ["unavailable", "drop_missing"] or
+            case_data.get("drop_missing") or
+            (precursor_field and (
+                precursor_field.get("dropped") or 
+                float(precursor_field.get("numeric_value", 1.0)) == 0.0 or 
+                "dropped" in str(precursor_field.get("extracted_value", "")).lower() or
+                "dropped" in str(precursor_field.get("field_label", "")).lower()
+            ))
+        )
 
-        # Lookup precursor factor based on category
-        if "Aluminium" in category:
-            precursor_name = "Aluminium Ingot (Unwrought Primary)"
-        elif "Cement" in category:
-            precursor_name = "Cement Clinker"
-        elif "Fertilizer" in category:
-            precursor_name = "Ammonia (Anhydrous)"
+        if is_dropped:
+            precursor_name = "Direct Reduced Iron (DRI / Sponge Iron) - Excluded / Dropped"
+            precursor_amount = 0.0
+            precursor_factor = 0.0
+            precursor_emissions_tco2e = 0.0
+            precursor_doc = "Exporter Authorization (Scope 1+2 Boundary)"
         else:
-            precursor_name = "Direct Reduced Iron (DRI / Sponge Iron)"
+            precursor_amount = float(precursor_field.get("numeric_value", 0.0)) if precursor_field else (product_quantity * 1.08)
+            precursor_doc = precursor_field.get("source_file_name", "Precursor Supplier Declaration") if precursor_field else "Default Benchmark"
 
-        precursor_factor_info = PRECURSOR_DEFAULT_FACTORS.get(precursor_name, PRECURSOR_DEFAULT_FACTORS["Direct Reduced Iron (DRI / Sponge Iron)"])
-        precursor_factor = precursor_factor_info["factor"]  # tCO2e / MT
+            # Lookup precursor factor based on category
+            if "Aluminium" in category:
+                precursor_name = "Aluminium Ingot (Unwrought Primary)"
+            elif "Cement" in category:
+                precursor_name = "Cement Clinker"
+            elif "Fertilizer" in category:
+                precursor_name = "Ammonia (Anhydrous)"
+            else:
+                precursor_name = "Direct Reduced Iron (DRI / Sponge Iron)"
 
-        # Formula: E_precursor (tCO2e) = Precursor_quantity (MT) * Precursor_Factor (tCO2e/MT)
-        precursor_emissions_tco2e = round(precursor_amount * precursor_factor, 4)
+            precursor_factor_info = PRECURSOR_DEFAULT_FACTORS.get(precursor_name, PRECURSOR_DEFAULT_FACTORS["Direct Reduced Iron (DRI / Sponge Iron)"])
+            precursor_factor = precursor_factor_info["factor"]  # tCO2e / MT
+
+            # Formula: E_precursor (tCO2e) = Precursor_quantity (MT) * Precursor_Factor (tCO2e/MT)
+            precursor_emissions_tco2e = round(precursor_amount * precursor_factor, 4)
 
         # 4. Total Embedded Emissions & Intensity
         # Total (tCO2e) = Direct + Indirect + Precursor
