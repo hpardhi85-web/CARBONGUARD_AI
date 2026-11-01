@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbfcf9;
+  --foreground: #1c2b14;
+  --kore-dark: #1c2b14;
+  --kore-card: #f4f6f1;
+  --kore-accent: #22c55e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-kore-dark: #1c2b14;
+  --color-kore-surface: #24361b;
+  --color-kore-card: #f4f6f1;
+  --color-kore-accent: #22c55e;
+  --font-serif: var(--font-serif), Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-sans: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Minimalist Bespoke Keyframe Animations */
+@keyframes orbGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.45), 0 0 50px rgba(16, 185, 129, 0.25);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 35px rgba(34, 197, 94, 0.65), 0 0 70px rgba(16, 185, 129, 0.4);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.animate-orb-glow {
+  animation: orbGlow 4s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 6s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(28, 43, 20, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 43, 20, 0.3);
+}

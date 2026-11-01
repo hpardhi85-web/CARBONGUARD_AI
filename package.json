@@ -1,0 +1,16 @@
+{
+  "name": "carbongaurd-ai-platform",
+  "version": "1.0.0",
+  "description": "Autonomous Multi-Agent Carbon Compliance Management Platform for Indian MSME Exporters (EU CBAM)",
+  "scripts": {
+    "dev": "cd carbongaurd && npm run dev",
+    "build": "cd carbongaurd && npm run build",
+    "start": "cd carbongaurd && npm start",
+    "lint": "cd carbongaurd && npm run lint",
+    "test:agents": ".\\backend\\venv\\Scripts\\python.exe tests\\test_multi_agent_pipeline.py",
+    "backend:dev": ".\\backend\\venv\\Scripts\\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
+  },
+  "author": "CarbonGuard AI Engineering Team",
+  "license": "MIT"
+}
+
